@@ -1,0 +1,55 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  body {
+    @apply bg-lavender-50 text-lavender-950 font-sans;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg bg-lavender-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-all hover:bg-lavender-700 hover:shadow-md active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg border border-lavender-200 bg-white px-4 py-2.5 text-sm font-medium text-lavender-700 transition-all hover:bg-lavender-50 hover:border-lavender-300 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  .btn-danger {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg border border-red-200 bg-white px-4 py-2.5 text-sm font-medium text-red-600 transition-all hover:bg-red-50 hover:border-red-300 active:scale-[0.98];
+  }
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-lavender-600 transition-all hover:bg-lavender-100 active:scale-[0.98];
+  }
+  .input-field {
+    @apply w-full rounded-lg border border-lavender-200 bg-white px-3.5 py-2.5 text-sm text-lavender-950 placeholder-lavender-300 transition-colors focus:border-lavender-500 focus:outline-none focus:ring-2 focus:ring-lavender-500/20;
+  }
+  .card {
+    @apply rounded-xl border border-lavender-100 bg-white shadow-sm;
+  }
+  .label-text {
+    @apply mb-1.5 block text-sm font-medium text-lavender-800;
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #d8d2ee;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #bfb4e0;
+}
