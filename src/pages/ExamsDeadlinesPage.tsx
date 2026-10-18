@@ -21,6 +21,7 @@ import type {
   LearningPathWithCounts,
 } from '@/types/database';
 import { formatDate } from '@/lib/format';
+import { useT } from '@/lib/i18n';
 import { Spinner, EmptyState, ErrorMessage } from '@/components/ui/Feedback';
 import { Modal } from '@/components/ui/Modal';
 import { ConfirmDialog, Badge } from '@/components/ui/ConfirmDialog';
@@ -52,19 +53,19 @@ function daysRemaining(dateStr: string): number {
   return Math.round((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 }
 
-function daysRemainingLabel(dateStr: string): { label: string; variant: 'default' | 'success' | 'warning' | 'info' } {
+function daysRemainingLabel(dateStr: string, t: (k: string) => string): { label: string; variant: 'default' | 'success' | 'warning' | 'info' } {
   const days = daysRemaining(dateStr);
-  if (days === 0) return { label: 'Today', variant: 'warning' };
-  if (days > 0) return { label: `${days} day${days !== 1 ? 's' : ''} left`, variant: 'info' };
-  return { label: 'Past', variant: 'default' };
+  if (days === 0) return { label: t('exams.today'), variant: 'warning' };
+  if (days > 0) return { label: `${days} ${days !== 1 ? t('exams.daysLeft') : t('exams.dayLeft')}`, variant: 'info' };
+  return { label: t('exams.past'), variant: 'default' };
 }
 
-function deadlineStatusLabel(dateStr: string, status: DeadlineStatus): { label: string; variant: 'default' | 'success' | 'warning' | 'info' } {
-  if (status === 'completed') return { label: 'Completed', variant: 'success' };
+function deadlineStatusLabel(dateStr: string, status: DeadlineStatus, t: (k: string) => string): { label: string; variant: 'default' | 'success' | 'warning' | 'info' } {
+  if (status === 'completed') return { label: t('exams.completed2'), variant: 'success' };
   const days = daysRemaining(dateStr);
-  if (days < 0) return { label: 'Overdue', variant: 'warning' };
-  if (days === 0) return { label: 'Today', variant: 'warning' };
-  return { label: `${days} day${days !== 1 ? 's' : ''} left`, variant: 'info' };
+  if (days < 0) return { label: t('exams.overdue'), variant: 'warning' };
+  if (days === 0) return { label: t('exams.today'), variant: 'warning' };
+  return { label: `${days} ${days !== 1 ? t('exams.daysLeft') : t('exams.dayLeft')}`, variant: 'info' };
 }
 
 function formatTime(timeStr: string | null): string | null {
@@ -78,6 +79,7 @@ function formatTime(timeStr: string | null): string | null {
 
 export function ExamsDeadlinesPage() {
   const navigate = useNavigate();
+  const t = useT();
   const [exams, setExams] = useState<ExamWithNames[]>([]);
   const [deadlines, setDeadlines] = useState<DeadlineWithNames[]>([]);
   const [subjects, setSubjects] = useState<SubjectWithProgress[]>([]);
@@ -187,8 +189,8 @@ export function ExamsDeadlinesPage() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-lavender-900">Exams & Deadlines</h1>
-        <p className="mt-1 text-sm text-lavender-500">Track your upcoming exams and assignment deadlines.</p>
+        <h1 className="text-2xl font-bold text-lavender-900">{t('exams.title')}</h1>
+        <p className="mt-1 text-sm text-lavender-500">{t('exams.subtitle')}</p>
       </div>
 
       {error && <ErrorMessage message={error} />}
@@ -198,7 +200,7 @@ export function ExamsDeadlinesPage() {
         <div className="mb-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <CalendarClock size={20} className="text-lavender-600" />
-            <h2 className="text-lg font-semibold text-lavender-900">Upcoming Exams</h2>
+            <h2 className="text-lg font-semibold text-lavender-900">{t('exams.upcomingExams')}</h2>
             <Badge variant="default">{upcomingExams.length}</Badge>
           </div>
           <button
@@ -209,7 +211,7 @@ export function ExamsDeadlinesPage() {
             className="btn-primary"
           >
             <Plus size={18} />
-            Add Exam
+            {t('exams.addExam')}
           </button>
         </div>
 
@@ -217,14 +219,14 @@ export function ExamsDeadlinesPage() {
           <div className="card p-6">
             <EmptyState
               icon={<CalendarClock size={40} />}
-              title="No upcoming exams"
-              description="Add an exam to keep track of important dates."
+              title={t('exams.noExams')}
+              description={t('exams.noExamsDesc')}
             />
           </div>
         ) : (
           <div className="space-y-3">
             {upcomingExams.map((exam) => {
-              const remain = daysRemainingLabel(exam.exam_date);
+              const remain = daysRemainingLabel(exam.exam_date, t);
               return (
                 <div key={exam.id} className="card group flex items-center gap-4 p-4">
                   <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl bg-lavender-100">
@@ -234,7 +236,7 @@ export function ExamsDeadlinesPage() {
                     <p className="truncate text-sm font-semibold text-lavender-900">{exam.title}</p>
                     <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-lavender-500">
                       <span className="flex items-center gap-1">
-                        <GraduationCap size={12} /> {exam.subject_name ?? 'No subject'}
+                        <GraduationCap size={12} /> {exam.subject_name ?? t('exams.noSubject')}
                       </span>
                       <span>{formatDate(exam.exam_date)}</span>
                       {exam.start_time && (
@@ -281,7 +283,7 @@ export function ExamsDeadlinesPage() {
         <div className="mb-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <FileText size={20} className="text-lavender-600" />
-            <h2 className="text-lg font-semibold text-lavender-900">Upcoming Deadlines</h2>
+            <h2 className="text-lg font-semibold text-lavender-900">{t('exams.upcomingDeadlines')}</h2>
             <Badge variant="default">{upcomingDeadlines.length}</Badge>
           </div>
           <button
@@ -292,7 +294,7 @@ export function ExamsDeadlinesPage() {
             className="btn-primary"
           >
             <Plus size={18} />
-            Add Deadline
+            {t('exams.addDeadline')}
           </button>
         </div>
 
@@ -300,20 +302,20 @@ export function ExamsDeadlinesPage() {
           <div className="card p-6">
             <EmptyState
               icon={<FileText size={40} />}
-              title="No deadlines"
-              description="Add a deadline to track assignments and tasks."
+              title={t('exams.noDeadlines')}
+              description={t('exams.noDeadlinesDesc')}
             />
           </div>
         ) : (
           <div className="space-y-3">
             {upcomingDeadlines.map((d) => {
-              const status = deadlineStatusLabel(d.due_date, d.status);
+              const status = deadlineStatusLabel(d.due_date, d.status, t);
               return (
                 <div key={d.id} className="card group flex items-center gap-4 p-4">
                   <button
                     onClick={() => handleToggleDeadline(d)}
                     className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full border-2 border-lavender-300 text-lavender-400 transition-colors hover:border-lavender-500 hover:text-lavender-600"
-                    title="Mark as completed"
+                    title={t('exams.markCompleted')}
                   >
                     <Circle size={14} />
                   </button>
@@ -323,6 +325,11 @@ export function ExamsDeadlinesPage() {
                       {d.subject_name && (
                         <span className="flex items-center gap-1">
                           <GraduationCap size={12} /> {d.subject_name}
+                        </span>
+                      )}
+                      {!d.subject_name && (
+                        <span className="flex items-center gap-1">
+                          <GraduationCap size={12} /> {t('exams.noSubject')}
                         </span>
                       )}
                       <span>{formatDate(d.due_date)}</span>
@@ -361,7 +368,7 @@ export function ExamsDeadlinesPage() {
             {completedDeadlines.length > 0 && (
               <div className="pt-2">
                 <p className="mb-2 text-xs font-medium uppercase tracking-wide text-lavender-400">
-                  Completed
+                  {t('exams.completed')}
                 </p>
                 {completedDeadlines.map((d) => (
                   <div
@@ -371,7 +378,7 @@ export function ExamsDeadlinesPage() {
                     <button
                       onClick={() => handleToggleDeadline(d)}
                       className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-green-100 text-green-600"
-                      title="Mark as pending"
+                      title={t('exams.markPending')}
                     >
                       <CheckCircle2 size={14} />
                     </button>
@@ -381,7 +388,7 @@ export function ExamsDeadlinesPage() {
                       </p>
                       <span className="text-xs text-lavender-400">{formatDate(d.due_date)}</span>
                     </div>
-                    <Badge variant="success">Completed</Badge>
+                    <Badge variant="success">{t('exams.completed2')}</Badge>
                     <button
                       onClick={() => setDeleteDeadlineTarget(d)}
                       className="rounded-lg p-2 text-lavender-400 transition-colors hover:bg-red-50 hover:text-red-600"
@@ -408,6 +415,7 @@ export function ExamsDeadlinesPage() {
         subjects={subjects}
         learningPaths={learningPaths}
         editingExam={editingExam}
+        t={t}
       />
 
       {/* Deadline modal */}
@@ -421,6 +429,7 @@ export function ExamsDeadlinesPage() {
         subjects={subjects}
         learningPaths={learningPaths}
         editingDeadline={editingDeadline}
+        t={t}
       />
 
       {/* Delete confirmations */}
@@ -428,18 +437,18 @@ export function ExamsDeadlinesPage() {
         open={!!deleteExamTarget}
         onClose={() => setDeleteExamTarget(null)}
         onConfirm={handleDeleteExam}
-        title="Delete exam?"
-        message={`Delete "${deleteExamTarget?.title}"? This cannot be undone.`}
-        confirmLabel="Delete"
+        title={t('exams.deleteExam')}
+        message={`"${deleteExamTarget?.title}" — ${t('exams.deleteConfirm')}`}
+        confirmLabel={t('common.delete')}
         destructive
       />
       <ConfirmDialog
         open={!!deleteDeadlineTarget}
         onClose={() => setDeleteDeadlineTarget(null)}
         onConfirm={handleDeleteDeadline}
-        title="Delete deadline?"
-        message={`Delete "${deleteDeadlineTarget?.title}"? This cannot be undone.`}
-        confirmLabel="Delete"
+        title={t('exams.deleteDeadline')}
+        message={`"${deleteDeadlineTarget?.title}" — ${t('exams.deleteConfirm')}`}
+        confirmLabel={t('common.delete')}
         destructive
       />
     </div>
@@ -453,6 +462,7 @@ function ExamFormModal({
   subjects,
   learningPaths,
   editingExam,
+  t,
 }: {
   open: boolean;
   onClose: () => void;
@@ -460,6 +470,7 @@ function ExamFormModal({
   subjects: SubjectWithProgress[];
   learningPaths: LearningPathWithCounts[];
   editingExam: ExamWithNames | null;
+  t: (k: string) => string;
 }) {
   const [title, setTitle] = useState('');
   const [examDate, setExamDate] = useState(todayLocalDate());
@@ -495,11 +506,11 @@ function ExamFormModal({
     setFormError(null);
 
     if (!title.trim()) {
-      setFormError('Title is required.');
+      setFormError(t('common.required'));
       return;
     }
     if (!examDate) {
-      setFormError('Exam date is required.');
+      setFormError(t('exams.examDate'));
       return;
     }
 
@@ -520,7 +531,7 @@ function ExamFormModal({
       }
       onSave();
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : 'Failed to save exam');
+      setFormError(err instanceof Error ? err.message : t('exams.title'));
     } finally {
       setSaving(false);
     }
@@ -530,25 +541,25 @@ function ExamFormModal({
     <Modal
       open={open}
       onClose={onClose}
-      title={editingExam ? 'Edit Exam' : 'Create Exam'}
+      title={editingExam ? t('exams.editExam') : t('exams.createExam')}
       maxWidth="max-w-lg"
     >
       <div className="space-y-4">
         {formError && <ErrorMessage message={formError} />}
 
         <div>
-          <label className="mb-1 block text-sm font-medium text-lavender-700">Title</label>
+          <label className="mb-1 block text-sm font-medium text-lavender-700">{t('exams.examTitle')}</label>
           <input
             type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             className="input-field"
-            placeholder="e.g. Midterm Exam"
+            placeholder={t('exams.examTitle')}
           />
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-medium text-lavender-700">Learning Path</label>
+          <label className="mb-1 block text-sm font-medium text-lavender-700">{t('common.learningPath')}</label>
           <select
             value={learningPathId}
             onChange={(e) => {
@@ -557,7 +568,7 @@ function ExamFormModal({
             }}
             className="input-field"
           >
-            <option value="">None</option>
+            <option value="">{t('common.none')}</option>
             {learningPaths.map((lp) => (
               <option key={lp.id} value={lp.id}>{lp.name}</option>
             ))}
@@ -565,13 +576,13 @@ function ExamFormModal({
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-medium text-lavender-700">Subject</label>
+          <label className="mb-1 block text-sm font-medium text-lavender-700">{t('common.subject')}</label>
           <select
             value={subjectId}
             onChange={(e) => setSubjectId(e.target.value)}
             className="input-field"
           >
-            <option value="">None</option>
+            <option value="">{t('common.none')}</option>
             {subjects
               .filter((s) => !learningPathId || s.learning_path_id === learningPathId)
               .map((s) => (
@@ -582,7 +593,7 @@ function ExamFormModal({
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="mb-1 block text-sm font-medium text-lavender-700">Exam Date</label>
+            <label className="mb-1 block text-sm font-medium text-lavender-700">{t('exams.examDate')}</label>
             <input
               type="date"
               value={examDate}
@@ -591,7 +602,7 @@ function ExamFormModal({
             />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-lavender-700">Start Time</label>
+            <label className="mb-1 block text-sm font-medium text-lavender-700">{t('exams.startTime')}</label>
             <input
               type="time"
               value={startTime}
@@ -602,20 +613,20 @@ function ExamFormModal({
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-medium text-lavender-700">Location (optional)</label>
+          <label className="mb-1 block text-sm font-medium text-lavender-700">{t('exams.location')}</label>
           <input
             type="text"
             value={location}
             onChange={(e) => setLocation(e.target.value)}
             className="input-field"
-            placeholder="e.g. Room 204"
+            placeholder={t('exams.location')}
           />
         </div>
 
         <div className="flex justify-end gap-2 pt-2">
-          <button onClick={onClose} className="btn-secondary">Cancel</button>
+          <button onClick={onClose} className="btn-secondary">{t('common.cancel')}</button>
           <button onClick={handleSubmit} disabled={saving} className="btn-primary">
-            {saving ? <Spinner size={18} /> : editingExam ? 'Save Changes' : 'Create Exam'}
+            {saving ? <Spinner size={18} /> : editingExam ? t('common.save') : t('exams.createExam')}
           </button>
         </div>
       </div>
@@ -630,6 +641,7 @@ function DeadlineFormModal({
   subjects,
   learningPaths,
   editingDeadline,
+  t,
 }: {
   open: boolean;
   onClose: () => void;
@@ -637,6 +649,7 @@ function DeadlineFormModal({
   subjects: SubjectWithProgress[];
   learningPaths: LearningPathWithCounts[];
   editingDeadline: DeadlineWithNames | null;
+  t: (k: string) => string;
 }) {
   const [title, setTitle] = useState('');
   const [dueDate, setDueDate] = useState(todayLocalDate());
@@ -672,11 +685,11 @@ function DeadlineFormModal({
     setFormError(null);
 
     if (!title.trim()) {
-      setFormError('Title is required.');
+      setFormError(t('common.required'));
       return;
     }
     if (!dueDate) {
-      setFormError('Due date is required.');
+      setFormError(t('exams.dueDate'));
       return;
     }
 
@@ -697,7 +710,7 @@ function DeadlineFormModal({
       }
       onSave();
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : 'Failed to save deadline');
+      setFormError(err instanceof Error ? err.message : t('exams.title'));
     } finally {
       setSaving(false);
     }
@@ -707,25 +720,25 @@ function DeadlineFormModal({
     <Modal
       open={open}
       onClose={onClose}
-      title={editingDeadline ? 'Edit Deadline' : 'Create Deadline'}
+      title={editingDeadline ? t('exams.editDeadline') : t('exams.createDeadline')}
       maxWidth="max-w-lg"
     >
       <div className="space-y-4">
         {formError && <ErrorMessage message={formError} />}
 
         <div>
-          <label className="mb-1 block text-sm font-medium text-lavender-700">Title</label>
+          <label className="mb-1 block text-sm font-medium text-lavender-700">{t('exams.deadlineTitle')}</label>
           <input
             type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             className="input-field"
-            placeholder="e.g. Submit Assignment 3"
+            placeholder={t('exams.deadlineTitle')}
           />
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-medium text-lavender-700">Learning Path</label>
+          <label className="mb-1 block text-sm font-medium text-lavender-700">{t('common.learningPath')}</label>
           <select
             value={learningPathId}
             onChange={(e) => {
@@ -734,7 +747,7 @@ function DeadlineFormModal({
             }}
             className="input-field"
           >
-            <option value="">None</option>
+            <option value="">{t('common.none')}</option>
             {learningPaths.map((lp) => (
               <option key={lp.id} value={lp.id}>{lp.name}</option>
             ))}
@@ -742,13 +755,13 @@ function DeadlineFormModal({
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-medium text-lavender-700">Subject</label>
+          <label className="mb-1 block text-sm font-medium text-lavender-700">{t('common.subject')}</label>
           <select
             value={subjectId}
             onChange={(e) => setSubjectId(e.target.value)}
             className="input-field"
           >
-            <option value="">None</option>
+            <option value="">{t('common.none')}</option>
             {subjects
               .filter((s) => !learningPathId || s.learning_path_id === learningPathId)
               .map((s) => (
@@ -759,7 +772,7 @@ function DeadlineFormModal({
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="mb-1 block text-sm font-medium text-lavender-700">Due Date</label>
+            <label className="mb-1 block text-sm font-medium text-lavender-700">{t('exams.dueDate')}</label>
             <input
               type="date"
               value={dueDate}
@@ -768,7 +781,7 @@ function DeadlineFormModal({
             />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-lavender-700">Due Time</label>
+            <label className="mb-1 block text-sm font-medium text-lavender-700">{t('exams.dueTime')}</label>
             <input
               type="time"
               value={dueTime}
@@ -779,19 +792,19 @@ function DeadlineFormModal({
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-medium text-lavender-700">Description (optional)</label>
+          <label className="mb-1 block text-sm font-medium text-lavender-700">{t('exams.description')}</label>
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             className="input-field min-h-[60px] resize-y"
-            placeholder="Additional notes..."
+            placeholder={t('exams.description')}
           />
         </div>
 
         <div className="flex justify-end gap-2 pt-2">
-          <button onClick={onClose} className="btn-secondary">Cancel</button>
+          <button onClick={onClose} className="btn-secondary">{t('common.cancel')}</button>
           <button onClick={handleSubmit} disabled={saving} className="btn-primary">
-            {saving ? <Spinner size={18} /> : editingDeadline ? 'Save Changes' : 'Create Deadline'}
+            {saving ? <Spinner size={18} /> : editingDeadline ? t('common.save') : t('exams.createDeadline')}
           </button>
         </div>
       </div>
