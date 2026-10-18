@@ -10,20 +10,17 @@ import type {
   StudySession,
   SessionEvent,
   SessionType,
-  SessionStatus,
   EventType,
   DistractionReason,
   StudySessionWithNames,
   TodayStudyStats,
   Goal,
   GoalType,
-  GoalStatus,
   GoalWithProgress,
   Exam,
   ExamWithNames,
   Deadline,
   DeadlineWithNames,
-  DeadlineStatus,
   StudyTask,
   StudyTaskWithNames,
   TaskStep,
@@ -33,13 +30,9 @@ import type {
   ScheduleEntryType,
   Review,
   ReviewWithNames,
-  ReviewStatus,
-  ReviewConfidence,
   Mistake,
   MistakeWithNames,
   MistakeCategory,
-  MistakeStatus,
-  TaskStatus,
 } from '@/types/database';
 
 // ============================================================
@@ -1288,7 +1281,7 @@ export async function fetchStudyTasks(date?: string): Promise<StudyTaskWithNames
 
   // Fetch step counts for all tasks
   const taskIds = tasks.map((t) => t.id);
-  let stepCounts = new Map<string, { total: number; completed: number }>();
+  const stepCounts = new Map<string, { total: number; completed: number }>();
 
   if (taskIds.length > 0) {
     const { data: steps } = await supabase

@@ -1,5 +1,4 @@
 import { useEffect, useState, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
 import {
   fetchExams,
   createExam,
@@ -11,7 +10,6 @@ import {
   deleteDeadline,
   fetchAllSubjects,
   fetchLearningPaths,
-  type DashboardUpcoming,
 } from '@/lib/api';
 import type {
   ExamWithNames,
@@ -36,8 +34,6 @@ import {
   GraduationCap,
   MapPin,
   Clock,
-  AlertCircle,
-  ChevronRight,
 } from 'lucide-react';
 
 function todayLocalDate(): string {
@@ -78,7 +74,6 @@ function formatTime(timeStr: string | null): string | null {
 }
 
 export function ExamsDeadlinesPage() {
-  const navigate = useNavigate();
   const t = useT();
   const [exams, setExams] = useState<ExamWithNames[]>([]);
   const [deadlines, setDeadlines] = useState<DeadlineWithNames[]>([]);
