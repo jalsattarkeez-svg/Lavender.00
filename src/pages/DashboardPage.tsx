@@ -1,23 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-  BookOpen,
-  GraduationCap,
-  ClipboardList,
-  CheckCircle2,
-  TrendingUp,
-  Timer,
-  ArrowRight,
-  Sparkles,
-  Clock,
-  Target,
-  AlertCircle,
-  Focus,
-  CalendarClock,
-  FileText,
-  ListChecks,
-  RotateCcw,
-} from 'lucide-react';
+import { BookOpen, GraduationCap, ClipboardList, CircleCheck as CheckCircle2, TrendingUp, Timer, ArrowRight, Sparkles, Clock, Target, CircleAlert as AlertCircle, Focus, CalendarClock, FileText, ListChecks, RotateCcw, Plus, Plus } from 'lucide-react';
 import { useAuthStore } from '@/store/auth';
 import { useStudyStore } from '@/store/study';
 import { useT } from '@/lib/i18n';

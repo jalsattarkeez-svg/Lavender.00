@@ -6,21 +6,15 @@ import {
   deleteLesson,
   updateLessonStatus,
   reorderLessons,
+  fetchTaskSteps,
+  createTaskStep,
+  updateTaskStep,
+  deleteTaskStep,
 } from '@/lib/api';
-import type { SubjectWithProgress, Lesson, LessonStatus } from '@/types/database';
+import type { SubjectWithProgress, Lesson, LessonStatus, TaskStep } from '@/types/database';
 import { Spinner, EmptyState, ErrorMessage } from '@/components/ui/Feedback';
 import { Modal, ConfirmDialog, ProgressBar, Badge } from '@/components/ui/ConfirmDialog';
-import {
-  Plus,
-  Pencil,
-  Trash2,
-  ArrowLeft,
-  ClipboardList,
-  Circle,
-  CircleDot,
-  CheckCircle2,
-  GripVertical,
-} from 'lucide-react';
+import { Plus, Pencil, Trash2, ArrowLeft, ClipboardList, Circle, CircleDot, CircleCheck as CheckCircle2, GripVertical, ChevronDown, ChevronRight, ListChecks } from 'lucide-react';
 import { useT } from '@/lib/i18n';
 
 interface LessonFormState {
@@ -51,6 +45,12 @@ export function LessonList({
   const [form, setForm] = useState<LessonFormState>({ title: '', description: '' });
   const [saving, setSaving] = useState(false);
 
+  // Lesson steps state
+  const [expandedSteps, setExpandedSteps] = useState<Set<string>>(new Set());
+  const [lessonSteps, setLessonSteps] = useState<Record<string, TaskStep[]>>({});
+  const [stepInputs, setStepInputs] = useState<Record<string, string>>({});
+  const [stepsLoading, setStepsLoading] = useState<Set<string>>(new Set());
+
   const load = async () => {
     setLoading(true);
     setError(null);
@@ -74,6 +74,73 @@ export function LessonList({
     totalCount > 0
       ? Math.round((completedCount / totalCount) * 100)
       : 0;
+
+  const loadSteps = async (lessonId: string) => {
+    setStepsLoading((prev) => new Set(prev).add(lessonId));
+    try {
+      const steps = await fetchTaskSteps('lesson', lessonId);
+      setLessonSteps((prev) => ({ ...prev, [lessonId]: steps }));
+    } catch {
+      setError(t('common.error'));
+    } finally {
+      setStepsLoading((prev) => {
+        const next = new Set(prev);
+        next.delete(lessonId);
+        return next;
+      });
+    }
+  };
+
+  const toggleExpand = (lessonId: string) => {
+    setExpandedSteps((prev) => {
+      const next = new Set(prev);
+      if (next.has(lessonId)) {
+        next.delete(lessonId);
+      } else {
+        next.add(lessonId);
+        if (!lessonSteps[lessonId]) loadSteps(lessonId);
+      }
+      return next;
+    });
+  };
+
+  const handleAddStep = async (lessonId: string) => {
+    const title = stepInputs[lessonId]?.trim();
+    if (!title) return;
+    try {
+      const existing = lessonSteps[lessonId] ?? [];
+      await createTaskStep({
+        parent_type: 'lesson',
+        lesson_id: lessonId,
+        title,
+        order_index: existing.length,
+      });
+      setStepInputs((prev) => ({ ...prev, [lessonId]: '' }));
+      await loadSteps(lessonId);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t('common.error'));
+    }
+  };
+
+  const handleToggleStep = async (step: TaskStep) => {
+    try {
+      await updateTaskStep(step.id, { completed: !step.completed });
+      const lessonId = step.lesson_id;
+      if (lessonId) await loadSteps(lessonId);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t('common.error'));
+    }
+  };
+
+  const handleDeleteStep = async (stepId: string, lessonId: string | null) => {
+    if (!lessonId) return;
+    try {
+      await deleteTaskStep(stepId);
+      await loadSteps(lessonId);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t('common.error'));
+    }
+  };
 
   const openCreate = () => {
     setEditTarget(null);
@@ -200,71 +267,147 @@ export function LessonList({
           {lessons.map((lesson, index) => {
             const config = statusConfig[lesson.status];
             const StatusIcon = config.icon;
+            const isExpanded = expandedSteps.has(lesson.id);
+            const steps = lessonSteps[lesson.id] ?? [];
+            const stepsAreLoading = stepsLoading.has(lesson.id);
+            const completedSteps = steps.filter((s) => s.completed).length;
             return (
-              <div
-                key={lesson.id}
-                className="card group flex items-center gap-3 p-3 transition-all hover:shadow-md"
-              >
-                {/* Reorder controls */}
-                <div className="hidden flex-col sm:flex">
+              <div key={lesson.id} className="card group transition-all hover:shadow-md">
+                <div className="flex items-center gap-3 p-3">
+                  {/* Reorder controls */}
+                  <div className="hidden flex-col sm:flex">
+                    <button
+                      onClick={() => moveLesson(index, 'up')}
+                      disabled={index === 0}
+                      className="text-lavender-300 transition-colors hover:text-lavender-600 disabled:opacity-30"
+                    >
+                      <GripVertical size={16} className="rotate-180" />
+                    </button>
+                    <button
+                      onClick={() => moveLesson(index, 'down')}
+                      disabled={index === lessons.length - 1}
+                      className="text-lavender-300 transition-colors hover:text-lavender-600 disabled:opacity-30"
+                    >
+                      <GripVertical size={16} />
+                    </button>
+                  </div>
+
+                  {/* Status toggle */}
                   <button
-                    onClick={() => moveLesson(index, 'up')}
-                    disabled={index === 0}
-                    className="text-lavender-300 transition-colors hover:text-lavender-600 disabled:opacity-30"
+                    onClick={() => {
+                      const next: LessonStatus =
+                        lesson.status === 'not_started'
+                          ? 'in_progress'
+                          : lesson.status === 'in_progress'
+                          ? 'completed'
+                          : 'not_started';
+                      handleStatusChange(lesson, next);
+                    }}
+                    className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full transition-colors hover:bg-lavender-100 ${config.color}`}
+                    title={`${t('common.status')}: ${lesson.status === 'not_started' ? t('learning.notStarted') : lesson.status === 'in_progress' ? t('learning.inProgress') : t('learning.completed')}`}
                   >
-                    <GripVertical size={16} className="rotate-180" />
+                    <StatusIcon size={20} />
                   </button>
+
+                  <div className="min-w-0 flex-1">
+                    <p className={`text-sm font-medium ${lesson.status === 'completed' ? 'text-lavender-400 line-through' : 'text-lavender-900'}`}>
+                      {lesson.title}
+                    </p>
+                    {lesson.description && (
+                      <p className="mt-0.5 line-clamp-1 text-xs text-lavender-400">{lesson.description}</p>
+                    )}
+                  </div>
+
+                  <Badge variant={config.badge}>{lesson.status === 'not_started' ? t('learning.notStarted') : lesson.status === 'in_progress' ? t('learning.inProgress') : t('learning.completed')}</Badge>
+
+                  {/* Steps toggle */}
                   <button
-                    onClick={() => moveLesson(index, 'down')}
-                    disabled={index === lessons.length - 1}
-                    className="text-lavender-300 transition-colors hover:text-lavender-600 disabled:opacity-30"
+                    onClick={() => toggleExpand(lesson.id)}
+                    className="rounded-lg p-1.5 text-lavender-400 transition-colors hover:bg-lavender-50 hover:text-lavender-600"
+                    title={t('learning.steps')}
                   >
-                    <GripVertical size={16} />
+                    {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
                   </button>
+
+                  <div className="flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                    <button
+                      onClick={() => openEdit(lesson)}
+                      className="rounded-lg p-1.5 text-lavender-400 hover:bg-lavender-100 hover:text-lavender-600"
+                    >
+                      <Pencil size={16} />
+                    </button>
+                    <button
+                      onClick={() => setDeleteTarget(lesson)}
+                      className="rounded-lg p-1.5 text-lavender-400 hover:bg-red-50 hover:text-red-600"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
                 </div>
 
-                {/* Status toggle */}
-                <button
-                  onClick={() => {
-                    const next: LessonStatus =
-                      lesson.status === 'not_started'
-                        ? 'in_progress'
-                        : lesson.status === 'in_progress'
-                        ? 'completed'
-                        : 'not_started';
-                    handleStatusChange(lesson, next);
-                  }}
-                  className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full transition-colors hover:bg-lavender-100 ${config.color}`}
-                  title={`${t('common.status')}: ${lesson.status === 'not_started' ? t('learning.notStarted') : lesson.status === 'in_progress' ? t('learning.inProgress') : t('learning.completed')}`}
-                >
-                  <StatusIcon size={20} />
-                </button>
+                {/* Lesson steps (expandable) */}
+                {isExpanded && (
+                  <div className="border-t border-lavender-50 px-4 py-3">
+                    <div className="mb-2 flex items-center gap-2 text-xs text-lavender-500">
+                      <ListChecks size={14} />
+                      {steps.length > 0 && (
+                        <span>{completedSteps}/{steps.length} {t('learning.stepsProgress')}</span>
+                      )}
+                    </div>
 
-                <div className="min-w-0 flex-1">
-                  <p className={`text-sm font-medium ${lesson.status === 'completed' ? 'text-lavender-400 line-through' : 'text-lavender-900'}`}>
-                    {lesson.title}
-                  </p>
-                  {lesson.description && (
-                    <p className="mt-0.5 line-clamp-1 text-xs text-lavender-400">{lesson.description}</p>
-                  )}
-                </div>
+                    {stepsAreLoading ? (
+                      <div className="flex justify-center py-3">
+                        <Spinner size={18} />
+                      </div>
+                    ) : steps.length === 0 ? (
+                      <p className="mb-2 text-xs text-lavender-400">{t('learning.noSteps')}</p>
+                    ) : (
+                      <div className="space-y-1.5">
+                        {steps.map((step) => (
+                          <div key={step.id} className="flex items-center gap-2 group/step">
+                            <button
+                              onClick={() => handleToggleStep(step)}
+                              className={`flex h-5 w-5 flex-shrink-0 items-center justify-center rounded border-2 transition-colors ${
+                                step.completed
+                                  ? 'border-green-500 bg-green-500 text-white'
+                                  : 'border-lavender-300 text-transparent hover:border-lavender-500'
+                              }`}
+                            >
+                              {step.completed && <CheckCircle2 size={12} />}
+                            </button>
+                            <span className={`flex-1 text-sm ${step.completed ? 'text-lavender-400 line-through' : 'text-lavender-700'}`}>
+                              {step.title}
+                            </span>
+                            <button
+                              onClick={() => handleDeleteStep(step.id, step.lesson_id)}
+                              className="text-lavender-300 opacity-0 transition-opacity hover:text-red-500 group-hover/step:opacity-100"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
 
-                <Badge variant={config.badge}>{lesson.status === 'not_started' ? t('learning.notStarted') : lesson.status === 'in_progress' ? t('learning.inProgress') : t('learning.completed')}</Badge>
-
-                <div className="flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-                  <button
-                    onClick={() => openEdit(lesson)}
-                    className="rounded-lg p-1.5 text-lavender-400 hover:bg-lavender-100 hover:text-lavender-600"
-                  >
-                    <Pencil size={16} />
-                  </button>
-                  <button
-                    onClick={() => setDeleteTarget(lesson)}
-                    className="rounded-lg p-1.5 text-lavender-400 hover:bg-red-50 hover:text-red-600"
-                  >
-                    <Trash2 size={16} />
-                  </button>
-                </div>
+                    <div className="mt-2 flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={stepInputs[lesson.id] ?? ''}
+                        onChange={(e) => setStepInputs((prev) => ({ ...prev, [lesson.id]: e.target.value }))}
+                        onKeyDown={(e) => e.key === 'Enter' && handleAddStep(lesson.id)}
+                        className="input-field !py-2 text-sm"
+                        placeholder={t('learning.addStep')}
+                      />
+                      <button
+                        onClick={() => handleAddStep(lesson.id)}
+                        className="btn-ghost !px-3 !py-2"
+                        disabled={!stepInputs[lesson.id]?.trim()}
+                      >
+                        <Plus size={16} />
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             );
           })}
