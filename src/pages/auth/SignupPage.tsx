@@ -21,9 +21,17 @@ export function SignupPage() {
     setError(null);
     setLoading(true);
     try {
-      await signUp(email, password, displayName || undefined);
-      await syncSession();
-      navigate('/dashboard');
+      const result = await signUp(email, password, displayName || undefined);
+      if (result.user && !result.session) {
+        sessionStorage.setItem('lavender_pending_signup_email', email);
+        navigate('/verify-email');
+      } else if (result.session) {
+        await syncSession();
+        navigate('/dashboard');
+      } else {
+        sessionStorage.setItem('lavender_pending_signup_email', email);
+        navigate('/verify-email');
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : t('common.error'));
     } finally {
