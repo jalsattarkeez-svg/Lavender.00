@@ -18,9 +18,23 @@ export async function signIn(email: string, password: string) {
   return data;
 }
 
+const PRODUCTION_ORIGIN = 'https://lavender-00.vercel.app';
+const RESET_PATH = '/reset-password';
+
+function getResetRedirectUrl(): string {
+  const origin = window.location.origin;
+  const isLocalDev =
+    origin.startsWith('http://localhost') ||
+    origin.startsWith('http://127.0.0.1');
+  if (isLocalDev) {
+    return `${origin}${RESET_PATH}`;
+  }
+  return `${PRODUCTION_ORIGIN}${RESET_PATH}`;
+}
+
 export async function resetPassword(email: string) {
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${window.location.origin}/reset-password`,
+    redirectTo: getResetRedirectUrl(),
   });
   if (error) throw error;
 }
